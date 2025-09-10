@@ -50,7 +50,7 @@ def example_asset_func(func_fixer):
 
 @pytest.fixture
 def example_asset_definition(example_asset_func):
-    return asset(schedule=None, uri="s3://bucket/object", group="MLModel", extra={"k": "v"})(
+    return asset(schedule=None, uri="s3://bucket/object", group="MLModel", event_extra_template={"k": "v"})(
         example_asset_func
     )
 
@@ -84,7 +84,7 @@ class TestAssetDecorator:
         assert asset_definition.name == "example_asset_func"
         assert asset_definition.uri == "example_asset_func"
         assert asset_definition.group == "asset"
-        assert asset_definition.extra == {}
+        assert asset_definition.event_extra_template == {}
         assert asset_definition._function == example_asset_func
         assert asset_definition._source.schedule is None
 
@@ -94,18 +94,18 @@ class TestAssetDecorator:
         assert asset_definition.name == "example_asset_func"
         assert asset_definition.uri == "s3://bucket/object"
         assert asset_definition.group == "asset"
-        assert asset_definition.extra == {}
+        assert asset_definition.event_extra_template == {}
         assert asset_definition._function == example_asset_func
         assert asset_definition._source.schedule is None
 
-    def test_with_group_and_extra(self, example_asset_func):
-        asset_definition = asset(schedule=None, uri="s3://bucket/object", group="MLModel", extra={"k": "v"})(
-            example_asset_func
-        )
+    def test_with_group_and_event_extra_template(self, example_asset_func):
+        asset_definition = asset(
+            schedule=None, uri="s3://bucket/object", group="MLModel", event_extra_template={"k": "v"}
+        )(example_asset_func)
         assert asset_definition.name == "example_asset_func"
         assert asset_definition.uri == "s3://bucket/object"
         assert asset_definition.group == "MLModel"
-        assert asset_definition.extra == {"k": "v"}
+        assert asset_definition.event_extra_template == {"k": "v"}
         assert asset_definition._function == example_asset_func
         assert asset_definition._source.schedule is None
 
@@ -223,9 +223,9 @@ class TestAssetDefinition:
     @mock.patch("airflow.sdk.definitions.asset.decorators._AssetMainOperator.from_definition")
     @mock.patch("airflow.sdk.definitions.dag.DAG")
     def test__attrs_post_init__(self, DAG, from_definition, example_asset_func_with_valid_arg_as_inlet_asset):
-        asset_definition = asset(schedule=None, uri="s3://bucket/object", group="MLModel", extra={"k": "v"})(
-            example_asset_func_with_valid_arg_as_inlet_asset
-        )
+        asset_definition = asset(
+            schedule=None, uri="s3://bucket/object", group="MLModel", event_extra_template={"k": "v"}
+        )(example_asset_func_with_valid_arg_as_inlet_asset)
 
         DAG.assert_called_once_with(
             dag_id="example_asset_func",
@@ -384,10 +384,10 @@ class Test_AssetMainOperator:
                 group="MLModel",
                 extra={"k": "v"},
             ),
-            AssetResult(name="inlet_asset_1", uri="s3://bucket/object1", group="asset", extra=None),
-            AssetResult(name="inlet_asset_2", uri="inlet_asset_2", group="asset", extra=None),
-        ]
-
+            AssetResult(
+                name="inlet_asset_1", uri="s3://bucket/object1", group="asset", event_extra_template=None
+            ),
+            AssetResult(name="inlet_asset_2", uri="inlet_asset_2", group="asset", event_extra_template=None),
         op = _AssetMainOperator(
             task_id="example_asset_func",
             inlets=[Asset.ref(name="inlet_asset_1"), Asset.ref(name="inlet_asset_2")],
